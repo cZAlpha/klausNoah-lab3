@@ -141,7 +141,6 @@ int** read_board_from_file(char* filename){
     return board;
 }
 
-
 int is_board_valid(int** board){
     /* the thread identifiers */
     pthread_t* tid[27];  // 27 threads, 9 rows, 9 columns, 9 boxes for validation

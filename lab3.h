@@ -26,3 +26,18 @@ int is_board_valid();
  * and returns a reference to the array.
 */
 int** read_board_from_file(char* filename);
+
+/**
+ * Checks a given row in the board
+*/
+void* check_row(void* param);
+
+/**
+ * Checks a given column in the board
+*/
+void* check_column(void* param);
+
+/**
+ * Checks a given box in the board
+*/
+void* check_box(void* param);
