@@ -16,18 +16,6 @@ typedef struct {
 } param_struct;
 
 /**
- * is_board_valid - Checks if the Sudoko board is valid or not.  Returns a 0 
- *                  if the board is not valid; 1 otherwise.
-*/
-int is_board_valid();
-
-/** 
- * Reads in the sudoku board into a 2-dimensional array
- * and returns a reference to the array.
-*/
-int** read_board_from_file(char* filename);
-
-/**
  * Checks a given row in the board
 */
 void* check_row(void* param);
@@ -41,3 +29,16 @@ void* check_column(void* param);
  * Checks a given box in the board
 */
 void* check_box(void* param);
+
+
+/**
+ * is_board_valid - Checks if the Sudoko board is valid or not.  Returns a 0 
+ *                  if the board is not valid; 1 otherwise.
+*/
+int is_board_valid();
+
+/** 
+ * Reads in the sudoku board into a 2-dimensional array
+ * and returns a reference to the array.
+*/
+int** read_board_from_file(char* filename);
