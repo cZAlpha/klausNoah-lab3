@@ -10,25 +10,80 @@ typedef struct {  // A user-type structure used to hold info for the threads
     int result;  // a 0 for invalid, 1 for valid
 } param_struct;
 
-void* check_row(void* param) { // Function to check if a row is valid
+void* check_row(void* param) {
     param_struct* data = (param_struct*)param;
-    // TO DO: Implement the row validation logic 
-    return NULL; // Return 1 if row is valid, return 0 if not valid
+    int* seen = (int*)calloc(ROW_SIZE, sizeof(int));
+
+    for (int i = data->start_row; i <= data->end_row; i++) {
+        for (int j = 0; j < ROW_SIZE; j++) {
+            int num = data->board[i][j];
+
+            // Check if the number has already been seen in this row
+            if (seen[num - 1] == 1) {
+                data->result = 0; // Invalid row
+                free(seen);
+                return NULL;
+            }
+
+            seen[num - 1] = 1;
+        }
+    }
+
+    data->result = 1; // Valid row
+    free(seen);
+    return NULL;
 }
 
-void* check_column(void* param) { // Function to check if a column is valid
+void* check_column(void* param) {
     param_struct* data = (param_struct*)param;
-    // TO DO: Implement the column validation logic 
-    return NULL; // Return 1 if row is valid, return 0 if not valid
+    int* seen = (int*)calloc(ROW_SIZE, sizeof(int));
+
+    for (int i = 0; i < ROW_SIZE; i++) {
+        for (int j = data->start_row; j <= data->end_row; j++) {
+            int num = data->board[j][i];
+
+            // Check if the number has already been seen in this column
+            if (seen[num - 1] == 1) {
+                data->result = 0; // Invalid column
+                free(seen);
+                return NULL;
+            }
+
+            seen[num - 1] = 1;
+        }
+    }
+
+    data->result = 1; // Valid column
+    free(seen);
+    return NULL;
 }
 
-void* check_box(void* param) {  // Function to check if a given 3x3 box is valid
+void* check_box(void* param) {
     param_struct* data = (param_struct*)param;
-    // Implement the box validation logic here
-    return NULL; // Return 1 if row is valid, return 0 if not valid
+    int* seen = (int*)calloc(ROW_SIZE, sizeof(int));
+
+    for (int i = data->start_row; i <= data->end_row; i++) {
+        for (int j = 0; j < ROW_SIZE; j++) {
+            int num = data->board[i][j];
+
+            // Calculate the corresponding index in the "seen" array
+            int index = (i % 3) * 3 + (j % 3);
+
+            // Check if the number has already been seen in this box
+            if (seen[index] == 1) {
+                data->result = 0; // Invalid box
+                free(seen);
+                return NULL;
+            }
+
+            seen[index] = 1;
+        }
+    }
+
+    data->result = 1; // Valid box
+    free(seen);
+    return NULL;
 }
-
-
 
 int** read_board_from_file(char* filename){
     // START - Variables
@@ -124,6 +179,8 @@ int is_board_valid(int** board){
         pthread_join(tid[i], NULL);
         results[i] = param[i].result;
     }
+
+    // TO DO: Implement the validation of each row, column, box in the board using the 3 first functions in the file
 
     // Checks the results and returns whether the board is valid or not
     for (int i = 0; i < 27; i++) {
