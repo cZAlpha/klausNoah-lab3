@@ -42,3 +42,5 @@ int is_board_valid();
  * and returns a reference to the array.
 */
 int** read_board_from_file(char* filename);
+
+extern int** sudoku_board; // Declaration of the global variable
