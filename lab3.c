@@ -139,7 +139,7 @@ int is_board_valid(){
     // setting of global var to local var for function
     int** board = sudoku_board;
 
-    /* the thread identifiers */
+    // the thread identifiers 
     pthread_t* tid[27];  // 27 threads, 9 rows, 9 columns, 9 boxes for validation
     pthread_attr_t attr;
     param_struct param[27];  // 27 params for the 27 threads
@@ -175,8 +175,6 @@ int is_board_valid(){
         pthread_join(tid[i], NULL);
         results[i] = param[i].result;
     }
-
-    // TO DO: Implement the validation of each row, column, box in the board using the 3 first functions in the file
 
     // Checks the results and returns whether the board is valid or not
     for (int i = 0; i < 27; i++) {
