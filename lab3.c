@@ -1,188 +1,120 @@
+// START - IMPORTS
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include "lab3.h"
+// STOP  - IMPORTS
 
-typedef struct {  // A user-type structure used to hold info for the threads
-    int** board; // Sudoku board
-    int start_row; // Starting row for the thread
-    int end_row;   // Ending row for the thread
-    int result;  // a 0 for invalid, 1 for valid
-} param_struct;
 
-void* check_row(void* param) {
-    param_struct* data = (param_struct*)param;
-    int* seen = (int*)calloc(ROW_SIZE, sizeof(int));
 
-    for (int i = data->start_row; i <= data->end_row; i++) {
-        for (int j = 0; j < ROW_SIZE; j++) {
-            int num = data->board[i][j];
+// START - Variable Instantiations
+extern int** sudoku_board; // global var reference
+int* validation; // array that keeps track of each iteration of validation being valid or not
+// STOP  - Variable Instantiations
 
-            // Check if the number has already been seen in this row
-            if (seen[num - 1] == 1) {
-                data->result = 0; // Invalid row
-                free(seen);
-                return NULL;
-            }
 
-            seen[num - 1] = 1;
-        }
-    }
 
-    data->result = 1; // Valid row
-    free(seen);
-    return NULL;
-}
+// Reading the board from file function
+int** read_board_from_file(char* filename){
+    sudoku_board = (int**)malloc(sizeof(int*)*ROW_SIZE); // dynamically allocates memory for the sodoku board to be read into
+    FILE *fp = NULL; // File pointer = null to start
+    for(int row = 0; row < ROW_SIZE; row++)
+	    sudoku_board[row] = (int*)malloc(sizeof(int)*COL_SIZE); // allocates memory for the columns
+    
+    fp = fopen(filename,"r"); // Opens the file in read mode
+    for(int x = 0; x < ROW_SIZE; x++) // nested for loop that copies the applicable values over
+        for(int y = 0; y < COL_SIZE; y++) 
+            fscanf(fp, "%d%*c", &sudoku_board[x][y]);
 
-void* check_column(void* param) {
-    param_struct* data = (param_struct*)param;
-    int* seen = (int*)calloc(ROW_SIZE, sizeof(int));
-
-    for (int i = 0; i < ROW_SIZE; i++) {
-        for (int j = data->start_row; j <= data->end_row; j++) {
-            int num = data->board[j][i];
-
-            // Check if the number has already been seen in this column
-            if (seen[num - 1] == 1) {
-                data->result = 0; // Invalid column
-                free(seen);
-                return NULL;
-            }
-
-            seen[num - 1] = 1;
-        }
-    }
-
-    data->result = 1; // Valid column
-    free(seen);
-    return NULL;
-}
-
-void* check_box(void* param) {
-    param_struct* data = (param_struct*)param;
-    int* seen = (int*)calloc(ROW_SIZE, sizeof(int));
-
-    for (int i = data->start_row; i <= data->end_row; i++) {
-        for (int j = 0; j < ROW_SIZE; j++) {
-            int num = data->board[i][j];
-
-            // Calculate the corresponding index in the "seen" array
-            int index = (i % 3) * 3 + (j % 3);
-
-            // Check if the number has already been seen in this box
-            if (seen[index] == 1) {
-                data->result = 0; // Invalid box
-                free(seen);
-                return NULL;
-            }
-
-            seen[index] = 1;
-        }
-    }
-
-    data->result = 1; // Valid box
-    free(seen);
-    return NULL;
-}
-
-int** read_board_from_file(char* filename) {
-    // START - Variables
-    FILE* fp = NULL;
-    int** board = (int**)malloc(ROW_SIZE * sizeof(int*));
-    long file_size;
-    // STOP  - Variables
-
-    // CHECKING IF FILE EXISTS AND CAN BE READ
-    fp = fopen(filename, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "File Location Equal to NULL, Unable To Access File.");
-        return NULL;
-    }
-
-    // CHECKS FILE SIZE TO SEE IF IT IS VALID (Less than 160 chars)
-    fseek(fp, 0, SEEK_END);
-    file_size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    if (file_size > 160) {
-        printf("File size is greater than 160.");
-        fclose(fp);
-        return NULL;
-    }
-
-    // Allocate memory for rows
-    for (int i = 0; i < ROW_SIZE; i++) {
-        board[i] = (int*)malloc(ROW_SIZE * sizeof(int));
-    }
-
-    // Rewind the file to the beginning
-    rewind(fp);
-
-    // Read data from the file
-    for (int i = 0; i < ROW_SIZE; i++) {
-        for (int j = 0; j < ROW_SIZE; j++) {
-            if (fscanf(fp, "%d", &board[i][j]) != 1) {
-                fprintf(stderr, "Error reading data from the file!");
-                fclose(fp);
-                return NULL;
-            }
-        }
-    }
-
-    // Close the file
-    fclose(fp);
-
-    return board;
+    fclose(fp); // closes file
+    return sudoku_board; // returns the board
 }
 
 
-int is_board_valid(){
-    // setting of global var to local var for function
-    int** board = sudoku_board;
 
-    // the thread identifiers 
-    pthread_t* tid[27];  // 27 threads, 9 rows, 9 columns, 9 boxes for validation
-    pthread_attr_t attr;
-    param_struct param[27];  // 27 params for the 27 threads
-    int results[27];  // Stores results for each row, column, and box validation check
+// Validating the board function
+void* validate(void* arg){
+    param_struct* seq = (param_struct*) arg; // structure holding parameters for the threads
+    int validation_array[9] = {0,0,0,0,0,0,0,0,0}; // array holding the bits specifying if the related number was in the 
+    int thread_id = seq->id; // the id of the thread
+    int starting_column = seq->starting_col; // the starting column
+    int ending_column = seq->ending_col; // the ending column
+    int starting_row = seq->starting_row; // the starting row
+    int ending_row = seq->ending_row; // the ending row
+    int current_iter; // the current iteration
+    validation[thread_id] = 1; // sets it to one to start out
 
-    // Initialize pthread attributes
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    // Init and spawn threads for row, column, and box validation
-    for (int i = 0; i < 9; i++) {
-        // Row Threads
-        param[i].board = board;
-        param[i].start_row = i;
-        param[i].end_row = i;
-        pthread_create(&tid[i], &attr, check_row, &param[i]);
-
-        // Column Threads
-        param[i + 9].board = board;
-        param[i + 9].start_row = i;
-        param[i + 9].end_row = i;
-        pthread_create(&tid[i + 9], &attr, check_column, &param[i + 9]);
-
-        // Box Threads
-        param[i + 18].board = board;
-        param[i + 18].start_row = i;
-        param[i + 18].end_row = i;
-        pthread_create(&tid[i + 18], &attr, check_box, &param[i + 18]);
-    }
-
-    // Waits for all threads to finish  
-    for (int i = 0; i < 27; i++) {
-        pthread_join(tid[i], NULL);
-        results[i] = param[i].result;
-    }
-
-    // Checks the results and returns whether the board is valid or not
-    for (int i = 0; i < 27; i++) {
-        if (results[i] == 0) {
-            return 0; // Board is not valid
+    for(int row = starting_row; row <= ending_row; row++){ // nested for loop to iterate over all columns and rows
+        for(int column = starting_column; column <= ending_column; column++){
+            current_iter = sudoku_board[row][column];
+            validation_array[current_iter - 1] = 1;
         }
     }
     
-    return 1;  // returns 1 if the board is valid
+    for(int i = 0; i < 9; i++) {
+        if(validation_array[i] != 1) { // sets the current thread's validation value to zero if it isn't one
+        validation[thread_id] = 0;
+        }
+    }    
 }
 
+
+
+// Overarching validation function to be run in main.c 
+int is_board_valid(){
+    pthread_t* tid;  /* the thread identifiers */
+    pthread_attr_t attr;
+    tid = (pthread_t*) malloc(sizeof(int*) * NUM_OF_THREADS);
+    param_struct* parameter = (param_struct*) malloc(sizeof(param_struct) * NUM_OF_THREADS);
+    validation = (int*) malloc(sizeof(int) * 27); // allocates the memory for the 27 threads necessary
+    int position = 0;
+    
+    for(int i = 0; i < ROW_SIZE; i++){
+        parameter[position].id = position;
+        parameter[position].starting_row = i;
+        parameter[position].starting_col = 0;
+        parameter[position].ending_row = i;
+        parameter[position].ending_col = COL_SIZE - 1;
+
+        pthread_create(&tid[position], NULL, validate, &parameter[position]);
+        position++;
+    }
+
+    for(int i = 0; i < COL_SIZE; i++){
+        parameter[position].id = position;
+        parameter[position].starting_row = 0;
+        parameter[position].starting_col = i;
+        parameter[position].ending_row = COL_SIZE - 1;
+        parameter[position].ending_col = i;
+
+        pthread_create(&tid[position], NULL, validate, &parameter[position]);
+        position++;
+    }
+
+    int r = 0, c = 0;
+    for(int i = 0; i < NUM_OF_SUBGRIDS; i++){
+        parameter[position].id = position;
+        parameter[position].starting_row = r;
+        parameter[position].starting_col = c;
+        parameter[position].ending_row = r + 2;
+        parameter[position].ending_col = c + 2;
+
+        pthread_create(&tid[position], NULL, validate, &parameter[position]);
+        position++;
+        if(c == 6){
+            r += 3;
+            c = 0;
+        } 
+        else c += 3;
+    }
+    
+    for(int i = 0; i< NUM_OF_THREADS; i++) 
+        pthread_join(tid[i], NULL);
+    
+    for (int x = 0; x< NUM_OF_THREADS; x++)
+        if(validation[x] != 1)return 0;
+
+    free(validation);
+    free(tid);
+    return 1;
+}
